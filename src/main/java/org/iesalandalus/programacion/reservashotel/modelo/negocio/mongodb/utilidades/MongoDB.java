@@ -16,9 +16,9 @@ import java.time.format.DateTimeFormatter;
 import static com.mongodb.client.model.Filters.eq;
 
 public class MongoDB {
-    public static final DateTimeFormatter FORMATO_DIA = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    public static final DateTimeFormatter FORMATO_DIA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    public static final DateTimeFormatter FORMATO_DIA_HORA = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+    public static final DateTimeFormatter FORMATO_DIA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
 
     private static final int PUERTO = 27017;
 
@@ -159,16 +159,18 @@ public class MongoDB {
         if(huesped == null) {
             throw new NullPointerException("ERROR: El húesped no puede ser nulo.");
         }
-        return new Document().append(NOMBRE, huesped.getNombre()).append(DNI, huesped.getDni()).append(TELEFONO, huesped.getTelefono()).append(CORREO,huesped.getCorreo()).append(FECHA_NACIMIENTO, huesped.getFechaNacimiento());
+        // arreglar en ambos métodos primero el correo y luego el teléfono
+        return new Document().append(NOMBRE, huesped.getNombre()).append(DNI, huesped.getDni()).append(CORREO, huesped.getCorreo()).append(TELEFONO,huesped.getTelefono()).append(FECHA_NACIMIENTO, huesped.getFechaNacimiento().format(FORMATO_DIA));
     }
 
     public static Huesped getHuesped(Document documentoHuesped) {
+        // arreglar en ambos métodos primero el correo y luego el teléfono
         if(documentoHuesped == null) {
             throw new NullPointerException("ERROR: El documento de un huésped no puede ser nulo.");
         }
         String fechaNacimientoCadena = documentoHuesped.getString(FECHA_NACIMIENTO);
         LocalDate fechaNacimiento = LocalDate.parse(fechaNacimientoCadena,FORMATO_DIA);
-        return new Huesped(documentoHuesped.getString(NOMBRE), documentoHuesped.getString(DNI), documentoHuesped.getString(TELEFONO), documentoHuesped.getString(CORREO), fechaNacimiento);
+        return new Huesped(documentoHuesped.getString(NOMBRE), documentoHuesped.getString(DNI), documentoHuesped.getString(CORREO), documentoHuesped.getString(TELEFONO), fechaNacimiento);
     }
 
     public static Document getDocumento(Habitacion habitacion) {
@@ -185,7 +187,13 @@ public class MongoDB {
             return new Document().append(PLANTA, habitacion.getPlanta()).append(PUERTA, habitacion.getPuerta()).append(IDENTIFICADOR, habitacion.getIdentificador()).append(PRECIO, habitacion.getPrecio()).append(TIPO, TIPO_TRIPLE).append(BANOS, ((Triple) habitacion).getNumBanos()).append(CAMAS_INDIVIDUALES, ((Triple) habitacion).getNumCamasIndividuales()).append(CAMAS_DOBLES, ((Triple) habitacion).getNumCamasDobles()).append(NUMERO_PERSONAS, habitacion.getNumeroMaximoPersonas());
         }
         if(habitacion instanceof Suite) {
-            return new Document().append(PLANTA, habitacion.getPlanta()).append(PUERTA, habitacion.getPuerta()).append(IDENTIFICADOR, habitacion.getIdentificador()).append(PRECIO, habitacion.getPrecio()).append(TIPO, TIPO_SUITE).append(BANOS, ((Suite) habitacion).getNumBanos()).append(JACUZZI, ((Suite) habitacion).isTieneJacuzzi());
+            String jacuzzi;
+            if(((Suite) habitacion).isTieneJacuzzi()) {
+                jacuzzi = "con Jacuzzi";
+            }  else {
+                jacuzzi = "sin Jacuzzi";
+            }
+            return new Document().append(PLANTA, habitacion.getPlanta()).append(PUERTA, habitacion.getPuerta()).append(IDENTIFICADOR, habitacion.getIdentificador()).append(PRECIO, habitacion.getPrecio()).append(TIPO, TIPO_SUITE).append(BANOS, ((Suite) habitacion).getNumBanos()).append(JACUZZI, jacuzzi);
         }
         return null;
     }
@@ -195,22 +203,37 @@ public class MongoDB {
             throw new NullPointerException("ERROR: El documento de una habitación no puede ser nulo.");
         }
         switch(documentoHabitacion.getString(TIPO)) {
-            case TIPO_SIMPLE -> new Simple(Integer.parseInt(documentoHabitacion.getString(PLANTA)),Integer.parseInt(documentoHabitacion.getString(PUERTA)), Double.parseDouble(documentoHabitacion.getString(PRECIO)));
-            case TIPO_DOBLE -> new Doble(Integer.parseInt(documentoHabitacion.getString(PLANTA)), Integer.parseInt(documentoHabitacion.getString(PUERTA)), Double.parseDouble(documentoHabitacion.getString(PRECIO)), Integer.parseInt(documentoHabitacion.getString(CAMAS_INDIVIDUALES)), Integer.parseInt(documentoHabitacion.getString(CAMAS_DOBLES)));
-            case TIPO_TRIPLE -> new Triple(Integer.parseInt(documentoHabitacion.getString(PLANTA)), Integer.parseInt(documentoHabitacion.getString(PUERTA)), Double.parseDouble(documentoHabitacion.getString(PRECIO)), Integer.parseInt(documentoHabitacion.getString(BANOS)), Integer.parseInt(documentoHabitacion.getString(CAMAS_INDIVIDUALES)), Integer.parseInt(documentoHabitacion.getString(CAMAS_DOBLES)));
-            case TIPO_SUITE -> new Suite(Integer.parseInt(documentoHabitacion.getString(PLANTA)), Integer.parseInt(documentoHabitacion.getString(PUERTA)), Double.parseDouble(documentoHabitacion.getString(PRECIO)), Integer.parseInt(documentoHabitacion.getString(BANOS)), Boolean.parseBoolean(documentoHabitacion.getString(JACUZZI)));
+            case TIPO_SIMPLE:
+                return new Simple(documentoHabitacion.getInteger(PLANTA),documentoHabitacion.getInteger(PUERTA), documentoHabitacion.getDouble(PRECIO));
+            case TIPO_DOBLE:
+                return new Doble(documentoHabitacion.getInteger(PLANTA), documentoHabitacion.getInteger(PUERTA), documentoHabitacion.getDouble(PRECIO), documentoHabitacion.getInteger(CAMAS_INDIVIDUALES), documentoHabitacion.getInteger(CAMAS_DOBLES));
+            case TIPO_TRIPLE:
+                return new Triple(documentoHabitacion.getInteger(PLANTA), documentoHabitacion.getInteger(PUERTA), documentoHabitacion.getDouble(PRECIO), documentoHabitacion.getInteger(BANOS), documentoHabitacion.getInteger(CAMAS_INDIVIDUALES), documentoHabitacion.getInteger(CAMAS_DOBLES));
+            case TIPO_SUITE:
+                if(documentoHabitacion.getString(JACUZZI).equals("con Jacuzzi")) {
+                    return new Suite(documentoHabitacion.getInteger(PLANTA), documentoHabitacion.getInteger(PUERTA), documentoHabitacion.getDouble(PRECIO), documentoHabitacion.getInteger(BANOS), true);
+                } else {
+                    return new Suite(documentoHabitacion.getInteger(PLANTA), documentoHabitacion.getInteger(PUERTA), documentoHabitacion.getDouble(PRECIO), documentoHabitacion.getInteger(BANOS), false);
+                }
+            default:
+                return null;
         }
-        return null;
+
     }
 
-    public Reserva getReserva(Document documentoReserva){
+    public static Reserva getReserva(Document documentoReserva){
         if(documentoReserva == null) {
             throw new NullPointerException("ERROR: El documento de una reserva no pùede ser nulo.");
         }
+        Huesped huesped = getHuesped((Document) documentoReserva.get(HUESPED));
+        Habitacion habitacion = getHabitacion((Document) documentoReserva.get(HABITACION));
+        /*
         MongoCollection<Document> listaHuespedes = getBD().getCollection("reservas");
         Document BaseDatosDocumentHuesped = listaHuespedes.find().filter(eq(HUESPED_DNI,documentoReserva.getString(HUESPED_DNI))).first();
         MongoCollection<Document> listaHabitaciones = getBD().getCollection("reservas");
         Document BaseDatosDocumentHabitacion = listaHabitaciones.find().filter(eq(HABITACION_IDENTIFICADOR,documentoReserva.getString(HABITACION_IDENTIFICADOR))).first();
+
+         */
         Regimen regimen = null;
         Regimen [] tipoRegimen = Regimen.values();
         for(Regimen valor : tipoRegimen) {
@@ -222,24 +245,46 @@ public class MongoDB {
         LocalDate fechaInicioReserva = LocalDate.parse(fechaInicioReservaCadena,FORMATO_DIA);
         String fechaFinReservaCadena = documentoReserva.getString(FECHA_FIN_RESERVA);
         LocalDate fechaFinReserva = LocalDate.parse(fechaFinReservaCadena,FORMATO_DIA);
-        Reserva reserva = new Reserva(getHuesped(BaseDatosDocumentHuesped),getHabitacion(BaseDatosDocumentHabitacion),regimen,fechaInicioReserva,fechaFinReserva,Integer.parseInt(documentoReserva.getString(NUMERO_PERSONAS)));
 
+        Reserva reserva = new Reserva(huesped,habitacion,regimen,fechaInicioReserva,fechaFinReserva,documentoReserva.getInteger(NUMERO_PERSONAS));
+        /*
         if(documentoReserva.getString(CHECKIN) != null) {
+
             String CheckInCadena = documentoReserva.getString(CHECKIN);
             LocalDateTime checkIN = LocalDateTime.parse(CheckInCadena,FORMATO_DIA_HORA);
-            reserva.setCheckIn(checkIN);
+
+            reserva.setCheckIn(fechaCheckIn);
         }
         if(documentoReserva.getString(CHECKOUT) != null) {
             String CheckOutCadena = documentoReserva.getString(CHECKOUT);
             LocalDateTime checkOut = LocalDateTime.parse(CheckOutCadena,FORMATO_DIA_HORA);
-            reserva.setCheckOut(checkOut);
+
+            reserva.setCheckOut(fechaCheckOut);
         }
+
+         */
+
+
+
+
         return reserva;
     }
-    public Document getDocumento(Reserva reserva){
+    public static Document getDocumento(Reserva reserva){
         if(reserva == null) {
             throw new NullPointerException("ERROR: La reserva no puede ser nula.");
         }
-        return new Document().append(HUESPED, reserva.getHuesped()).append(HABITACION, reserva.getHabitacion()).append(REGIMEN, reserva.getRegimen()).append(FECHA_INICIO_RESERVA, reserva.getFechaInicioReserva()).append(FECHA_FIN_RESERVA, reserva.getFechaFinReserva()).append(NUMERO_PERSONAS, reserva.getNumeroPersonas());
+        String cadenaCheckIn = " ";
+        String cadenaCheckOut = " ";
+        if(reserva.getCheckIn() == null) {
+            cadenaCheckIn = "No Registrado";
+        } else {
+            cadenaCheckIn = reserva.getCheckIn().format(FORMATO_DIA_HORA);
+        }
+        if(reserva.getCheckOut() == null) {
+            cadenaCheckOut = "No Registrado";
+        } else {
+            cadenaCheckOut = reserva.getCheckOut().format(FORMATO_DIA_HORA);
+        }
+        return new Document().append(HUESPED, getDocumento(reserva.getHuesped())).append(HABITACION, getDocumento(reserva.getHabitacion())).append(REGIMEN, reserva.getRegimen().toString()).append(FECHA_INICIO_RESERVA, reserva.getFechaInicioReserva().format(FORMATO_DIA)).append(FECHA_FIN_RESERVA, reserva.getFechaFinReserva().format(FORMATO_DIA)).append(NUMERO_PERSONAS, reserva.getNumeroPersonas()).append(CHECKIN, cadenaCheckIn).append(CHECKOUT, cadenaCheckOut);
     }
 }

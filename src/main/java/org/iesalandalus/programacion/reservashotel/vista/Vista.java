@@ -35,7 +35,7 @@ public class Vista {
          */
         do {
             Consola.mostrarMenu();
-            opcion = Consola.elegirOpcion();
+             opcion = Consola.elegirOpcion();
             opcion.ejecutar();
         }while(opcion != Opcion.SALIR);
     }
@@ -368,17 +368,21 @@ public class Vista {
     }
 
     public static void mostrarReservas() {
-        ArrayList<Reserva> reservasTotales = controlador.getReservas();
-        if(reservasTotales.isEmpty()) {
-            System.out.println("No hay reservas para mostrar.");
-        }else{
-            Comparator<Habitacion> habitacionComparator = Comparator.comparing(Habitacion::getIdentificador);
-            Collections.sort(reservasTotales,Comparator.comparing(Reserva::getFechaInicioReserva).thenComparing(Reserva::getHabitacion,habitacionComparator));
-            Iterator<Reserva> todasReservasIterador = reservasTotales.iterator();
-            while(todasReservasIterador.hasNext()) {
-                System.out.println(todasReservasIterador.next().toString());
-            }
+        try {
+            ArrayList<Reserva> reservasTotales = controlador.getReservas();
+            if(reservasTotales.isEmpty()) {
+                System.out.println("No hay reservas para mostrar.");
+            }else{
+                Comparator<Habitacion> habitacionComparator = Comparator.comparing(Habitacion::getIdentificador);
+                Collections.sort(reservasTotales,Comparator.comparing(Reserva::getFechaInicioReserva).thenComparing(Reserva::getHabitacion,habitacionComparator));
+                Iterator<Reserva> todasReservasIterador = reservasTotales.iterator();
+                while(todasReservasIterador.hasNext()) {
+                    System.out.println(todasReservasIterador.next().toString());
+                }
 
+            }
+        }catch (NullPointerException | IllegalArgumentException e) {
+            System.out.println("-" + e.getMessage());
         }
 
     }

@@ -1,26 +1,49 @@
 package org.iesalandalus.programacion.reservashotel.modelo.negocio.mongodb;
 
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Sorts;
+import com.mongodb.client.model.Updates;
 import org.iesalandalus.programacion.reservashotel.modelo.dominio.*;
 import org.iesalandalus.programacion.reservashotel.modelo.negocio.IReservas;
+import org.iesalandalus.programacion.reservashotel.modelo.negocio.mongodb.utilidades.MongoDB;
 
 import javax.naming.OperationNotSupportedException;
+import org.bson.Document;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Iterator;
 
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.eq;
+
 public class Reservas implements IReservas {
-    private ArrayList<Reserva> coleccionReservas = new ArrayList<>();
+
+    private static final String COLLECCION = "reservas";
+    private MongoCollection<Document> coleccionReservas;
 
     public Reservas() {
-
+        comenzar();
     }
 
     public ArrayList<Reserva> get() {
         ArrayList<Reserva> copiaReservas = new ArrayList<>();
-        Iterator<Reserva> copiaReservaIterador = coleccionReservas.iterator();
-        while(copiaReservaIterador.hasNext()) {
-            Reserva reserva = new Reserva(copiaReservaIterador.next());
+        FindIterable<Document> copiaReservasIterable = coleccionReservas.find().sort(Sorts.ascending(MongoDB.FECHA_INICIO_RESERVA));
+        Iterator<Document> copiaReservaDocumentIterador = copiaReservasIterable.iterator();
+        while(copiaReservaDocumentIterador.hasNext()) {
+            Document documentoReserva = copiaReservaDocumentIterador.next();
+            Reserva reserva = MongoDB.getReserva(documentoReserva);
+            if(!documentoReserva.getString(MongoDB.CHECKIN).equals("No Registrado")) {
+                LocalDateTime fechaCheckIn = LocalDateTime.parse(documentoReserva.getString("checkin"),MongoDB.FORMATO_DIA_HORA);
+                reserva.setCheckIn(fechaCheckIn);
+            }
+            if(!documentoReserva.getString(MongoDB.CHECKOUT).equals("No Registrado")) {
+                LocalDateTime fechaCheckOut = LocalDateTime.parse(documentoReserva.getString("checkout"),MongoDB.FORMATO_DIA_HORA);
+                reserva.setCheckOut(fechaCheckOut);
+            }
             copiaReservas.add(reserva);
         }
         return copiaReservas;
@@ -28,30 +51,30 @@ public class Reservas implements IReservas {
 
 
     public int getTamano() {
-        return coleccionReservas.size();
+        return (int) coleccionReservas.countDocuments();
     }
 
     public void insertar(Reserva reserva) throws OperationNotSupportedException {
         if (reserva == null) {
             throw new NullPointerException("ERROR: No se puede insertar una reserva nula.");
         }
-        if(coleccionReservas.contains(reserva)) {
+        if(buscar(reserva) != null) {
             throw new OperationNotSupportedException("ERROR: Ya existe una reserva igual.");
+        } else {
+            coleccionReservas.insertOne(MongoDB.getDocumento(reserva));
         }
-        coleccionReservas.add(reserva);
     }
 
     public Reserva buscar(Reserva reserva) {
         if(reserva == null) {
             throw new NullPointerException("ERROR: No se puede buscar una reserva nula.");
         }
-        if(coleccionReservas.contains(reserva)) {
-            Iterator<Reserva> iteradorReserva = coleccionReservas.iterator();
-            while(iteradorReserva.hasNext()) {
-                if(reserva.equals(iteradorReserva.next())) {
-                    return reserva;
-                }
-            }
+        Document documentoBusquedaReserva = coleccionReservas.find().filter(and(
+                eq(MongoDB.HUESPED_DNI, reserva.getHuesped().getDni()),
+                eq(MongoDB.HABITACION_IDENTIFICADOR, reserva.getHabitacion().getIdentificador())
+        )).first();
+        if(documentoBusquedaReserva !=null) {
+            return new Reserva(MongoDB.getReserva(documentoBusquedaReserva));
         }
         return null;
     }
@@ -62,10 +85,11 @@ public class Reservas implements IReservas {
             throw new NullPointerException("ERROR: No se puede borrar una reserva nula.");
         }
 
-        if (!coleccionReservas.contains(reserva)) {
+        if (buscar(reserva) == null) {
             throw new OperationNotSupportedException("ERROR: No existe ninguna reserva como la indicada.");
+        } else {
+            coleccionReservas.deleteOne(MongoDB.getDocumento(reserva));
         }
-        coleccionReservas.remove(reserva);
     }
 
 
@@ -74,10 +98,20 @@ public class Reservas implements IReservas {
             throw  new NullPointerException("ERROR: No se pueden buscar reservas de un huésped nulo.");
         }
         ArrayList<Reserva> listarReservasPorHuesped = new ArrayList<>();
-        Iterator<Reserva> listarReservasHuespedIterador = get().iterator();
-        while(listarReservasHuespedIterador.hasNext()) {
-            Reserva reserva = listarReservasHuespedIterador.next();
+        FindIterable<Document> listarReservaIterable = coleccionReservas.find().sort(Sorts.ascending(MongoDB.FECHA_INICIO_RESERVA));
+        Iterator<Document> listarReservasHuespedDocumentIterador = listarReservaIterable.iterator();
+        while(listarReservasHuespedDocumentIterador.hasNext()) {
+            Document documentoReserva = listarReservasHuespedDocumentIterador.next();
+            Reserva reserva = MongoDB.getReserva(documentoReserva);
             if(reserva.getHuesped().equals(huesped)) {
+                if(!documentoReserva.getString(MongoDB.CHECKIN).equals("No Registrado")) {
+                    LocalDateTime fechaCheckIn = LocalDateTime.parse(documentoReserva.getString("checkin"),MongoDB.FORMATO_DIA_HORA);
+                    reserva.setCheckIn(fechaCheckIn);
+                }
+                if(!documentoReserva.getString(MongoDB.CHECKOUT).equals("No Registrado")) {
+                    LocalDateTime fechaCheckOut = LocalDateTime.parse(documentoReserva.getString("checkout"),MongoDB.FORMATO_DIA_HORA);
+                    reserva.setCheckOut(fechaCheckOut);
+                }
                 listarReservasPorHuesped.add(reserva);
             }
         }
@@ -98,18 +132,30 @@ public class Reservas implements IReservas {
         }
 
         ArrayList<Reserva> listarReservasPorTipoHabitacion = new ArrayList<>();
-        Iterator<Reserva> listarReservasTipoHabitacionIterador = get().iterator();
-        while(listarReservasTipoHabitacionIterador.hasNext()) {
-            Reserva reserva = listarReservasTipoHabitacionIterador.next();
+        FindIterable<Document> listarReservasIterable = coleccionReservas.find().sort(Sorts.ascending(MongoDB.IDENTIFICADOR));
+        Iterator<Document> listarReservasTipoHabitacionDocumentIterador = listarReservasIterable.iterator();
+        while(listarReservasTipoHabitacionDocumentIterador.hasNext()) {
+            Document documentoReserva = listarReservasTipoHabitacionDocumentIterador.next();
+            Reserva reserva = MongoDB.getReserva(documentoReserva);
+            if(!documentoReserva.getString(MongoDB.CHECKIN).equals("No Registrado")) {
+                LocalDateTime fechaCheckIn = LocalDateTime.parse(documentoReserva.getString("checkin"),MongoDB.FORMATO_DIA_HORA);
+                reserva.setCheckIn(fechaCheckIn);
+            }
+            if(!documentoReserva.getString(MongoDB.CHECKOUT).equals("No Registrado")) {
+                LocalDateTime fechaCheckOut = LocalDateTime.parse(documentoReserva.getString("checkout"),MongoDB.FORMATO_DIA_HORA);
+                reserva.setCheckOut(fechaCheckOut);
+            }
             switch (tipoHabitacion) {
                 case SIMPLE:
                     if(reserva.getHabitacion() instanceof Simple) {
                         listarReservasPorTipoHabitacion.add(new Reserva(reserva));
+
                     }
                     break;
                 case DOBLE:
                     if(reserva.getHabitacion() instanceof Doble) {
                         listarReservasPorTipoHabitacion.add(new Reserva(reserva));
+
                     }
                     break;
                 case TRIPLE:
@@ -124,8 +170,28 @@ public class Reservas implements IReservas {
 
             }
 
+
+
         }
         return listarReservasPorTipoHabitacion;
+    }
+
+    public ArrayList<Reserva> getReservas(Habitacion habitacion) {
+        if(habitacion == null) {
+            throw new NullPointerException("ERROR: No se pueden buscar reservas de una habitación nula.");
+        }
+
+        ArrayList<Reserva> reservasHabitacion = new ArrayList<>();
+        FindIterable<Document> reservasIterable = coleccionReservas.find().sort(Sorts.ascending(MongoDB.FECHA_INICIO_RESERVA));
+        Iterator<Document> reservasIterador = reservasIterable.iterator();
+        while(reservasIterador.hasNext()) {
+            Document documentoReserva = reservasIterador.next();
+            Reserva reserva = MongoDB.getReserva(documentoReserva);
+            if(reserva.getHabitacion().equals(habitacion)) {
+                reservasHabitacion.add(reserva);
+            }
+        }
+        return reservasHabitacion;
     }
 
     public ArrayList<Reserva> getReservasFuturas(Habitacion habitacion) {
@@ -134,9 +200,11 @@ public class Reservas implements IReservas {
         }
 
         ArrayList<Reserva> reservasFuturas = new ArrayList<>();
-        Iterator<Reserva> reservasFuturasIterador = get().iterator();
+        FindIterable<Document> reservasFuturasIterable = coleccionReservas.find().sort(Sorts.ascending(MongoDB.FECHA_INICIO_RESERVA));
+        Iterator<Document> reservasFuturasIterador = reservasFuturasIterable.iterator();
         while(reservasFuturasIterador.hasNext()) {
-            Reserva reserva = reservasFuturasIterador.next();
+            Document documentoReserva = reservasFuturasIterador.next();
+            Reserva reserva = MongoDB.getReserva(documentoReserva);
             if(reserva.getHabitacion().equals(habitacion) && reserva.getFechaInicioReserva().isAfter(LocalDate.now())) {
                 reservasFuturas.add(reserva);
             }
@@ -154,14 +222,23 @@ public class Reservas implements IReservas {
     }
 
     public void realizarCheckIn(Reserva reserva, LocalDateTime fecha) {
-        Iterator<Reserva> reservaCheckInIterador = coleccionReservas.iterator();
-        while(reservaCheckInIterador.hasNext()) {
-            Reserva reservaCheckIn = reservaCheckInIterador.next();
-            if(reservaCheckIn != null) {
-                if(reservaCheckIn.equals(reserva)) {
-                    reservaCheckIn.setCheckIn(fecha);
-                }
+        if(reserva == null) {
+            throw new NullPointerException("ERROR: La reserva no puede ser nula.");
+        }
+        if(fecha == null) {
+            throw new NullPointerException("ERROR: La fecha no puede ser nula");
+        }
+
+        FindIterable<Document> documentReservaCheckInIterable = coleccionReservas.find();
+        Iterator<Document> reservaCheckInDocumentIterador = documentReservaCheckInIterable.iterator();
+        while(reservaCheckInDocumentIterador.hasNext()) {
+            Document documentReservaCheckIn = reservaCheckInDocumentIterador.next();
+            Reserva reservaCheckIn = MongoDB.getReserva(documentReservaCheckIn);
+            if(reservaCheckIn.equals(reserva)) {
+                reservaCheckIn.setCheckIn(fecha);
+                coleccionReservas.updateOne(Filters.eq(MongoDB.CHECKIN, documentReservaCheckIn.getString(MongoDB.CHECKIN)), Updates.set(MongoDB.CHECKIN, fecha.format(MongoDB.FORMATO_DIA_HORA)));
             }
+
         }
         /*
         for (int i = 0; i < coleccionReservas.size(); i++) {
@@ -177,19 +254,34 @@ public class Reservas implements IReservas {
     }
 
     public void realizarCheckOut(Reserva reserva, LocalDateTime fecha) {
-        Iterator<Reserva> reservaCheckOutIterador = coleccionReservas.iterator();
-        while(reservaCheckOutIterador.hasNext()) {
-            Reserva reservaCheckOut = reservaCheckOutIterador.next();
-            if(reservaCheckOut != null) {
-                if(reservaCheckOut.equals(reserva)) {
-                    if(reserva.getCheckIn()!= null) {
-                        reservaCheckOut.setCheckOut(fecha);
-                        System.out.println("Check-Out actualizado correctamente.");
-                    }else {
-                        System.out.println("Primero debes realizar el Check-In");
-                    }
+        if(reserva == null) {
+            throw new NullPointerException("ERROR: La reserva no puede ser nula.");
+        }
+        if(fecha == null) {
+            throw new NullPointerException("ERROR: La fecha no puede ser nula");
+        }
+        FindIterable<Document> documentReservaCheckInIterable = coleccionReservas.find();
+        Iterator<Document> reservaCheckOutDocumentIterador = documentReservaCheckInIterable.iterator();
+        while(reservaCheckOutDocumentIterador.hasNext()) {
+            Document documentReservaCheckOut = reservaCheckOutDocumentIterador.next();
+            Reserva reservaCheckOut = MongoDB.getReserva(documentReservaCheckOut);
+
+            if(reservaCheckOut.equals(reserva)) {
+                if(reserva.getCheckIn()!= null) {
+
+                    /*
+                    coleccionReservas.updateOne(Filters.eq(MongoDB.CHECKOUT, documentReservaCheckOut.getString(MongoDB.CHECKOUT)), Updates.set(MongoDB.CHECKOUT, String.format(fecha.toString(), MongoDB.FORMATO_DIA_HORA)));
+                     */
+                    reserva.setCheckOut(fecha);
+                    coleccionReservas.updateOne(Filters.eq(MongoDB.CHECKOUT, documentReservaCheckOut.getString(MongoDB.CHECKOUT)), Updates.set(MongoDB.CHECKOUT, fecha.format(MongoDB.FORMATO_DIA_HORA)));
+                    coleccionReservas.updateOne(Filters.eq(MongoDB.PRECIO_RESERVA, documentReservaCheckOut.getDouble(MongoDB.PRECIO_RESERVA)), Updates.set(MongoDB.PRECIO_RESERVA, reserva.getPrecio()));
+
+                    System.out.println("Check-Out actualizado correctamente.");
+                }else {
+                    System.out.println("Primero debes realizar el Check-In");
                 }
             }
+
         }
         /*
         Iterator<Reserva> reservaCheckOutIterador = coleccionReservas.iterator();
@@ -210,6 +302,14 @@ public class Reservas implements IReservas {
 
          */
 
+    }
+
+    public void comenzar() {
+        coleccionReservas = MongoDB.getBD().getCollection(COLLECCION);
+    }
+
+    public void terminar() {
+        MongoDB.cerrarConexion();
     }
 
 

@@ -3,8 +3,8 @@ package org.iesalandalus.programacion.reservashotel.modelo.dominio;
 public enum Regimen {
     SOLO_ALOJAMIENTO("Solo Alojamiento",0),
     ALOJAMIENTO_DESAYUNO("Alojamiento con Desayuno",15),
-    MEDIA_PENSION("Media Pensiï¿½n",30),
-    PENSION_COMPLETA("Pensiï¿½n Completa",50);
+    MEDIA_PENSION("Media Pensión",30),
+    PENSION_COMPLETA("Pensión Completa",50);
 
     private String cadenaAMostrar;
     private double incrementoPrecio;

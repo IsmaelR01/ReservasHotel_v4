@@ -4,32 +4,34 @@ import org.iesalandalus.programacion.reservashotel.modelo.dominio.Habitacion;
 import org.iesalandalus.programacion.reservashotel.modelo.dominio.Huesped;
 import org.iesalandalus.programacion.reservashotel.modelo.dominio.Reserva;
 import org.iesalandalus.programacion.reservashotel.modelo.dominio.TipoHabitacion;
+import org.iesalandalus.programacion.reservashotel.modelo.negocio.IFuenteDatos;
 import org.iesalandalus.programacion.reservashotel.modelo.negocio.IHabitaciones;
 import org.iesalandalus.programacion.reservashotel.modelo.negocio.IHuespedes;
 import org.iesalandalus.programacion.reservashotel.modelo.negocio.IReservas;
-import org.iesalandalus.programacion.reservashotel.modelo.negocio.memoria.Habitaciones;
-import org.iesalandalus.programacion.reservashotel.modelo.negocio.memoria.Huespedes;
-import org.iesalandalus.programacion.reservashotel.modelo.negocio.memoria.Reservas;
 
 import javax.naming.OperationNotSupportedException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 
-public class Modelo {
+public class Modelo implements IModelo {
     private static IHuespedes huespedes;
     private static IHabitaciones habitaciones;
     private static IReservas reservas;
-    public Modelo() {
-
+    private IFuenteDatos fuenteDatos;
+    public Modelo(FactoriaFuenteDatos factoriaFuenteDatos) {
+        setFuenteDatos(factoriaFuenteDatos.crear());
     }
 
     public void comenzar() {
-         huespedes = new Huespedes();
-         habitaciones = new Habitaciones();
-         reservas = new Reservas();
+         huespedes = fuenteDatos.crearHuespedes();
+         habitaciones = fuenteDatos.crearHabitaciones();
+         reservas = fuenteDatos.crearReservas();
     }
 
     public void terminar() {
+        huespedes.terminar();
+        habitaciones.terminar();
+        reservas.terminar();
         System.out.println("¡¡¡Has terminado, Hasta la próxima!!!");
     }
 
@@ -102,6 +104,10 @@ public class Modelo {
 
     public void realizarCheckOut(Reserva reserva, LocalDateTime fecha) {
         reservas.realizarCheckOut(reserva,fecha);
+    }
+
+    private void setFuenteDatos(IFuenteDatos fuenteDatos) {
+        this.fuenteDatos = fuenteDatos;
     }
 
 }
