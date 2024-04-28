@@ -94,8 +94,14 @@ public class Vista {
 
     public void borrarHuesped() {
         try {
-            controlador.borrar(Consola.getHuespedPorDni());
-            System.out.println("Huesped borrado correctamente.");
+            Huesped huesped = Consola.getHuespedPorDni();
+            if(!controlador.getReservas(huesped).isEmpty()) {
+                System.out.println("No puedes borrar el huésped porque tiene reservas.");
+            } else {
+                controlador.borrar(huesped);
+                System.out.println("Huesped borrado correctamente.");
+            }
+
         }catch (NullPointerException | IllegalArgumentException | OperationNotSupportedException e) {
             System.out.println("-" + e.getMessage());
         }
@@ -144,8 +150,13 @@ public class Vista {
 
     public void borrarHabitacion() {
         try {
-            controlador.borrar(Consola.leerHabitacionPorIdentificador());
-            System.out.println("Habitación borrada correctamente.");
+            Habitacion habitacion = Consola.leerHabitacionPorIdentificador();
+            if(!controlador.getReservas(habitacion).isEmpty()) {
+                System.out.println("No puedes borrar la habitación porque tiene reservas.");
+            } else {
+                controlador.borrar(Consola.leerHabitacionPorIdentificador());
+                System.out.println("Habitación borrada correctamente.");
+            }
         }catch (NullPointerException | IllegalArgumentException | OperationNotSupportedException e) {
             System.out.println("-" + e.getMessage());
         }

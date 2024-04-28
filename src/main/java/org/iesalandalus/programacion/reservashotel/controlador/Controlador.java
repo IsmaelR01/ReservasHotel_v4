@@ -96,6 +96,10 @@ public class Controlador {
         return modelo.getReservas(tipoHabitacion);
     }
 
+    public ArrayList<Reserva> getReservas(Habitacion habitacion) {
+        return modelo.getReservas(habitacion);
+    }
+
     public ArrayList<Reserva> getReservasFuturas(Habitacion habitacion) {
         return modelo.getReservasFuturas(habitacion);
     }

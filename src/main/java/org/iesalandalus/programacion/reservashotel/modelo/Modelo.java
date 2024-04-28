@@ -93,6 +93,9 @@ public class Modelo implements IModelo {
     public ArrayList<Reserva> getReservas(TipoHabitacion tipoHabitacion) {
         return reservas.getReservas(tipoHabitacion);
     }
+    public ArrayList<Reserva> getReservas(Habitacion habitacion) {
+        return reservas.getReservas(habitacion);
+    }
 
     public ArrayList<Reserva> getReservasFuturas(Habitacion habitacion) {
         return reservas.getReservasFuturas(habitacion);

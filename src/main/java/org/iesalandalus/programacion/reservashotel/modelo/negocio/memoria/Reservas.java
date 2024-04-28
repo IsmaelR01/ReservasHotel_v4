@@ -128,6 +128,20 @@ public class Reservas implements IReservas {
         return listarReservasPorTipoHabitacion;
     }
 
+    @Override
+    public ArrayList<Reserva> getReservas(Habitacion habitacion) {
+        ArrayList<Reserva> listarReservasPorHabitacion = new ArrayList<>();
+        Iterator<Reserva> listarReservadPorHabitacionIterador = get().iterator();
+        while(listarReservadPorHabitacionIterador.hasNext()) {
+            Reserva reserva = listarReservadPorHabitacionIterador.next();
+            if(reserva.getHabitacion().equals(habitacion)) {
+                listarReservasPorHabitacion.add(reserva);
+            }
+        }
+        return listarReservasPorHabitacion;
+    }
+
+
     public ArrayList<Reserva> getReservasFuturas(Habitacion habitacion) {
         if(habitacion == null) {
             throw new NullPointerException("ERROR: No se pueden buscar reservas de una habitación nula.");

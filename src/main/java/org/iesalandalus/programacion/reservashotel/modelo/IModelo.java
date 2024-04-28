@@ -44,6 +44,8 @@ public interface IModelo {
 
      ArrayList<Reserva> getReservas(TipoHabitacion tipoHabitacion);
 
+     ArrayList<Reserva> getReservas(Habitacion habitacion);
+
      ArrayList<Reserva> getReservasFuturas(Habitacion habitacion);
 
 
