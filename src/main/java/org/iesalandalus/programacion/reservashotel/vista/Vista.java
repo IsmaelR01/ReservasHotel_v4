@@ -96,7 +96,7 @@ public class Vista {
         try {
             Huesped huesped = Consola.getHuespedPorDni();
             if(!controlador.getReservas(huesped).isEmpty()) {
-                System.out.println("No puedes borrar el huésped porque tiene reservas.");
+                System.out.println("No se puede borrar el huésped porque tiene reservas.");
             } else {
                 controlador.borrar(huesped);
                 System.out.println("Huesped borrado correctamente.");
@@ -152,9 +152,9 @@ public class Vista {
         try {
             Habitacion habitacion = Consola.leerHabitacionPorIdentificador();
             if(!controlador.getReservas(habitacion).isEmpty()) {
-                System.out.println("No puedes borrar la habitación porque tiene reservas.");
+                System.out.println("No se puede borrar la habitación porque tiene reservas.");
             } else {
-                controlador.borrar(Consola.leerHabitacionPorIdentificador());
+                controlador.borrar(habitacion);
                 System.out.println("Habitación borrada correctamente.");
             }
         }catch (NullPointerException | IllegalArgumentException | OperationNotSupportedException e) {
